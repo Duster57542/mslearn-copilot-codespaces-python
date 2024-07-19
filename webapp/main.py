@@ -1,8 +1,9 @@
 import os
 import base64
+import hashlib
 from typing import Union
 from os.path import dirname, abspath, join
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -16,6 +17,10 @@ app.mount("/ui", StaticFiles(directory=static_path), name="ui")
 
 class Body(BaseModel):
     length: Union[int, None] = 20
+
+
+class TextBody(BaseModel):
+    text: str
 
 
 @app.get('/')
@@ -35,3 +40,19 @@ def generate(body: Body):
     """
     string = base64.b64encode(os.urandom(64))[:body.length].decode('utf-8')
     return {'token': string}
+
+
+@app.post('/checksum')
+def calculate_checksum(text_body: TextBody):
+    """
+    Calculate the checksum of the provided text. Example POST request body:
+
+    {
+        "text": "Hello, World!"
+    }
+    """
+    text = text_body.text
+    if not text:
+        raise HTTPException(status_code=400, detail="Text field is required")
+    checksum = hashlib.sha256(text.encode('utf-8')).hexdigest()
+    return {'checksum': checksum}
